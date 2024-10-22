@@ -8,7 +8,13 @@ actions = ['','a', 'b', 'left', 'right', 'up', 'down', 'start', 'select']
 class PokemonRedEnv(gym.Env):
 
     def __init__(self, pyboy, debug=False):
-        super().__init__()
-        self.pyboy = pyboy
-        self.debug = debug
-        
+        pass
+
+    def step(self, action):
+        pass
+
+    def reset(self, **kwargs):
+        pass
+
+    def close(self):
+        pass
