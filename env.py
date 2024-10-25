@@ -3,10 +3,10 @@ from gymnasium import spaces
 import numpy as np
 from pyboy import PyBoy
 
-# Trzeba zaimportować jakoś game wrappe, może być ten domyślny, albo stworzony przez mnie
+# Trzeba zaimportować jakoś game wrapper, może być ten domyślny, albo stworzony przez mnie
 actions = ['','a', 'b', 'left', 'right', 'up', 'down', 'start', 'select']
 
-matrix_shape = (160,144)
+matrix_shape = (16,20)
 game_area_observation_space = spaces.Box(low=0, high=255, shape=matrix_shape, dtype=np.uint8)
 
 class PokemonRedEnv(gym.Env):
