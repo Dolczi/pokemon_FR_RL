@@ -3,7 +3,7 @@ from gymnasium import spaces
 import numpy as np
 from pyboy import PyBoy
 
-# Trzeba zaimportować jakoś game wrapper, może być ten domyślny, albo stworzony przez mnie
+# Dodać poprawki, upewnić się, że game wrapper działa
 actions = ['','a', 'b', 'left', 'right', 'up', 'down', 'start', 'select']
 
 matrix_shape = (16,20)
