@@ -1,1 +1,1 @@
-# Zaimplementować sieć neuronową
+# 

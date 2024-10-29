@@ -9,6 +9,7 @@ actions = ['','a', 'b', 'left', 'right', 'up', 'down', 'start', 'select']
 matrix_shape = (16,20)
 game_area_observation_space = spaces.Box(low=0, high=255, shape=matrix_shape, dtype=np.uint8)
 
+# Make sure that this enc is made with openai gymnasium standard
 class PokemonRedEnv(gym.Env):
 
     def __init__(self, pyboy, debug=False):
@@ -23,6 +24,7 @@ class PokemonRedEnv(gym.Env):
         self.observation_space = game_area_observation_space
         self.pyboy.game_wrapper.start_game()
 
+    # Improve the step function and make sure it's done well
     def step(self, action):
         if action == 0:
             pass
@@ -40,10 +42,12 @@ class PokemonRedEnv(gym.Env):
 
         return observation, reward, done, truncated, info
     
+    # Think about moving this function to game wrapper
     def calculate_reward(self):
         # Tu obliczamy nagrodę
         pass
 
+    # Change functions for custom game wrapper
     def reset(self, **kwargs):
         self.pyboy.game_wrapper.reset_game()
         self._fitness=0
@@ -53,6 +57,7 @@ class PokemonRedEnv(gym.Env):
         info = {}
         return observation, info
     
+    # Add some code to render
     def render(self):
         pass
 
