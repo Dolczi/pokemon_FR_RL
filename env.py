@@ -12,6 +12,7 @@ game_area_observation_space = spaces.Box(low=0, high=255, shape=matrix_shape, dt
 # Make sure that this enc is made with openai gymnasium standard
 class PokemonRedEnv(gym.Env):
 
+    # Add new parameter for custom wrapper
     def __init__(self, pyboy, debug=False):
         super().__init__()
         self.pyboy = pyboy
