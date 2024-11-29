@@ -1,6 +1,7 @@
 from gymnasium import Env, spaces
 import numpy as np
 from pyboy import PyBoy
+from utils import calculate_reward, get_agent_stats, update_explored
 
 class PokemonRedEnv(Env):
 
@@ -30,20 +31,28 @@ class PokemonRedEnv(Env):
             self.pyboy.load_state(f)
 
         # Initialize the reward
+        self.agent_current_stats = get_agent_stats(self.pyboy)
+        self.agent_stats = []
+        self.agent_explored = []
         self.total_reward = 0
+        self.max_steps = 2048 * 10
+        self.steps_count = 0
 
     def step(self, action):
         # take an action
         self.pyboy.button(self.actions[action], 8)
         self.pyboy.tick(24)
 
-        # Observation and reward, REWARD FUNCTION YET TO BE ADDED
         observation = self.render()
-        reward = 0
+        reward = calculate_reward(self.pyboy, self.agent_explored, self.agent_current_stats, self.agent_stats)
+        self.total_reward += reward
+        self.agent_current_stats = get_agent_stats(self.pyboy)
+        self.agent_stats.append(self.agent_current_stats)
+        self.agent_explored = update_explored(self.agent_explored, self.agent_current_stats)
+        self.steps_count += 1
 
-        # Terminated or turncated, PLACEHOLDER
-        terminated = False
-        truncated = False
+        terminated = self.agent_current_stats['badges'] > 0
+        truncated = self.steps_count > self.max_steps
 
         return observation, reward, terminated, truncated, {}
 
@@ -52,13 +61,16 @@ class PokemonRedEnv(Env):
             self.pyboy.load_state(f)
 
         self.total_reward = 0
+        self.agent_stats = []
+        self.agent_explored = []
         observation = self.render()
+        self.agent_current_stats = get_agent_stats(self.pyboy)
 
         return observation, {}
 
     def render(self):
         # Generate observation
-        observation_full = self.pyboy.screen.ndarray
+        # observation_full = self.pyboy.screen.ndarray
         observation_simplified = self.pyboy.game_area()
         return observation_simplified
 
