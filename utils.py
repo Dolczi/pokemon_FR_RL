@@ -115,12 +115,13 @@ def update_max_level(agent_max_level, agent_current_stats):
 
 def calculate_reward(agent_explored, agent_current_stats, agent_stats, step_count, agent_max_level):
     reward_dict = {
-        'exploration': get_exploration_reward(agent_current_stats, agent_explored) * 0.1,
+        'exploration': get_exploration_reward(agent_current_stats, agent_explored) * 0.05,
         'level': get_levels_reward(agent_current_stats, agent_max_level),
         'healing': get_healing_reward(agent_current_stats, agent_stats, step_count) * 10,
-        'battle': get_battle_reward(agent_current_stats, agent_stats, step_count) * 3,
+        'battle': get_battle_reward(agent_current_stats, agent_stats, step_count) * 5,
         'gym_battle': get_gym_battle_reward(agent_current_stats, agent_stats, step_count) * 10,
-        'blocked': get_stuck_reward(agent_explored, agent_current_stats) * -0.5
+        'blocked': get_stuck_reward(agent_explored, agent_current_stats) * -0.2,
+        'run_away': get_run_away_reward(agent_current_stats, agent_stats, step_count) * -0.1
     }
     reward = 0
     for i in reward_dict.values():
@@ -143,9 +144,14 @@ def get_healing_reward(agent_current_stats, agent_stats, step_count):
     return 0
 
 def get_battle_reward(agent_current_stats, agent_stats, step_count):
+    if agent_current_stats['money'] > agent_stats[step_count]['money']:
+        return 1
+    return 0
+    '''
     if agent_current_stats['in_battle'] < agent_stats[step_count]['in_battle'] and agent_current_stats['enemy_hp'] < agent_stats[step_count]['enemy_hp']:
         return 1
     return 0
+    '''
 
 def get_gym_battle_reward(agent_current_stats, agent_stats, step_count):
     if agent_current_stats['badges'] > agent_stats[step_count]['badges']:
@@ -154,5 +160,10 @@ def get_gym_battle_reward(agent_current_stats, agent_stats, step_count):
 
 def get_stuck_reward(agent_explored, agent_current_stats):
     if agent_current_stats['location'] in agent_explored and agent_explored[agent_current_stats['location']] > 200:
+        return 1
+    return 0
+
+def get_run_away_reward(agent_current_stats, agent_stats, step_count):
+    if agent_current_stats['in_battle'] < agent_stats[step_count]['in_battle'] and agent_stats[step_count]['enemy_hp'] > 0 and agent_current_stats['party_size'] == agent_stats[step_count]['party_size']:
         return 1
     return 0

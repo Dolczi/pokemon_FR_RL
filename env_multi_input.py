@@ -18,7 +18,7 @@ class PokemonRedEnv(Env):
         self.action_space = spaces.Discrete(len(self.actions))
 
         # Observation space - sposób reprezentacji obserwacji dla agenta
-        self.output_shape = (72,80,self.frame_stack)
+        self.output_shape = (36,40,self.frame_stack)
         self.observation_space = spaces.Dict(
             {
                 'screen': spaces.Box(low=0, high=255, shape=self.output_shape, dtype=np.uint8),
@@ -82,7 +82,7 @@ class PokemonRedEnv(Env):
         self.agent_max_level = update_max_level(self.agent_max_level, self.agent_current_stats)
         self.step_count += 1
 
-        terminated = self.agent_current_stats['badges'] > 0
+        terminated = False #self.agent_current_stats['badges'] > 0
         truncated = self.step_count >= self.max_steps
 
         return observation, reward, terminated, truncated, {}
