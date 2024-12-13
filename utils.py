@@ -1,4 +1,7 @@
 from pyboy.utils import bcd_to_dec
+import numpy as np
+from skimage.transform import resize
+import matplotlib.pyplot as plt
 # Memory adresses
 PARTY_SIZE_ADDRES = 0xD163
 BADGES_COUNT_ADDRES = 0xD356
@@ -26,10 +29,69 @@ MONEY_ADDRESSES = [0xD347, 0xD348, 0xD349]
 CURRENT_MAP_ADDRESS = 0xD35E
 X_POS_ADDRESS = 0xD362
 Y_POS_ADDRESS = 0xD361
+IS_IN_BATTLE_ADDRESS = 0xD057
+WILD_POKEMON_HP = 0xCFE7
 
-# Add learning settings
+############################################################################################################################
+def get_observation(pyboy, recent_screens, recent_actions, output_shape):
+    recent_screens = np.roll(recent_screens, 1, axis=2)
+    recent_screens[:,:,0] = get_screen_downscaled(pyboy, output_shape)
+    observation = {
+                'screen': recent_screens,
+                'location': np.array(read_location(pyboy)),
+                'hp': np.array([sum(read_party_hp(pyboy))/sum(read_party_max_hp(pyboy))]),
+                'level': np.array([sum(read_levels(pyboy))]),
+                'badges': np.array([read_number_of_badges(pyboy)]),
+                'recent_actions': recent_actions,
+                'is_in_battle': np.array([read_in_battle(pyboy)])
+                }
+    return observation, recent_screens
 
-# Read memory functions
+def get_screen_downscaled(pyboy, output_shape):
+    pixels = pyboy.screen.ndarray[:,:,0:1]
+    downscaled_pixels = resize(
+        pixels,
+        output_shape=output_shape,
+        anti_aliasing=True,  
+        preserve_range=True
+    ).astype(np.uint8)
+    #plt.imshow(downscaled_pixels[:,:,0], cmap="gray")
+    #plt.show()
+    return downscaled_pixels[:,:,0]
+
+def read_location(pyboy):
+    return (pyboy.memory[CURRENT_MAP_ADDRESS], pyboy.memory[X_POS_ADDRESS], pyboy.memory[Y_POS_ADDRESS])
+
+def read_party_hp(pyboy):
+    return [256*pyboy.memory[i] + pyboy.memory[i+1] for i in PARTY_HP_ADDRESSES]
+
+def read_party_max_hp(pyboy):
+    return [256*pyboy.memory[i] + pyboy.memory[i+1] for i in PARTY_MAX_HP_ADDRESSES]
+
+def read_levels(pyboy):
+    return [pyboy.memory[i] for i in PARTY_LEVEL_ADDRESSES]
+
+def read_number_of_badges(pyboy):
+    return int(pyboy.memory[BADGES_COUNT_ADDRES]).bit_count()
+
+def read_in_battle(pyboy):
+    return pyboy.memory[IS_IN_BATTLE_ADDRESS]
+
+def get_agent_stats(pyboy):
+    stats = {
+        'location': read_location(pyboy),
+        'hp': sum(read_party_hp(pyboy))/sum(read_party_max_hp(pyboy)),
+        'level': sum(read_levels(pyboy)),
+        'money': read_money(pyboy),
+        'badges': read_number_of_badges(pyboy),
+        'party_size': read_party_size(pyboy),
+        'in_battle': read_in_battle(pyboy),
+        'enemy_hp': read_enemy_hp(pyboy)
+    }
+    return stats
+
+def read_party_size(pyboy):
+    return pyboy.memory[PARTY_SIZE_ADDRES]
 
 def read_money(pyboy):
     return (
@@ -38,94 +100,59 @@ def read_money(pyboy):
          bcd_to_dec(pyboy.memory[MONEY_ADDRESSES[0]]) * 10000
          )
 
-def read_levels(pyboy):
-    return [pyboy.memory[a] for a in PARTY_LEVEL_ADDRESSES]
-
-def read_party_id(pyboy):
-    return [pyboy.memory[a] for a in PARTY_ID_ADDRESSES]
-
-def read_party_hp(pyboy):
-    return [256*pyboy.memory[a] + pyboy.memory[a+1] for a in PARTY_HP_ADDRESSES]
-
-def read_party_max_hp(pyboy):
-    return [256*pyboy.memory[a] + pyboy.memory[a+1] for a in PARTY_MAX_HP_ADDRESSES]
-
-def read_party_exp(pyboy):
-    return [pyboy.memory[a] for a in PARTY_EXP_ADDRESSES]
-
-def read_party_status(pyboy):
-    return [pyboy.memory[a] for a in PARTY_STATUS_ADDRESSES]
-
-def read_party_types(pyboy):
-    return [pyboy.memory[a] for a in PARTY_TYPES_ADDRESSES]
-
-def read_number_of_badges(pyboy):
-    return int(pyboy.memory[BADGES_COUNT_ADDRES]).bit_count()
-
-def read_party_size(pyboy):
-    return pyboy.memory[PARTY_SIZE_ADDRES]
-
-def read_location(pyboy):
-    return (pyboy.memory[CURRENT_MAP_ADDRESS], pyboy.memory[X_POS_ADDRESS], pyboy.memory[Y_POS_ADDRESS])
-
-# Rewards
-
-def get_location_reward(pyboy, agent_explored):
-    current_location = read_location(pyboy)
-    if current_location not in agent_explored:
-        return 1
-    return 0
-
-def get_levels_reward(pyboy, current_agent_stats):
-    current_levels = sum(read_levels(pyboy))
-    if current_levels > current_agent_stats['levels']:
-        return current_levels - current_agent_stats['levels']
-    return 0
-
-# Health increases and player didn't die, new pokemon wasn't catched
-def get_healing_reward(pyboy, current_agent_stats):
-    current_health = sum(read_party_hp(pyboy))/sum(read_party_max_hp(pyboy))
-    current_party_size = read_party_size(pyboy)
-    if current_health > current_agent_stats['health'] and current_party_size == current_party_size['party_size'] and current_agent_stats['health'] != 0:
-        return current_health - current_agent_stats['health']
-    return 0
-
-# Won trainer battle
-def get_trainer_battle_reward(pyboy, current_agent_stats):
-    if read_money(pyboy) > current_agent_stats['money']:
-        return 1
-    return 0
-
-# Won new badge
-def get_badges_reward(pyboy, current_agent_stats):
-    if read_number_of_badges(pyboy) > current_agent_stats['badges']:
-        return 1
-    return 0
-
-def calculate_reward(pyboy, agent_explored, current_agent_stats):
-        rewards = {
-            'exploration': get_location_reward(pyboy, agent_explored, current_agent_stats) * 0.05,
-            'levels': get_levels_reward(pyboy, current_agent_stats),
-            'trainer_battles': get_trainer_battle_reward(pyboy, current_agent_stats) * 3,
-            'healing': get_healing_reward(pyboy, current_agent_stats) * 4,
-            'badges': get_badges_reward(pyboy, current_agent_stats) * 5
-        }
-        reward = sum([key for key in rewards])
-        return reward
-
-def get_agent_stats(pyboy):
-    stats = {
-        'location': read_location(pyboy),
-        'levels': sum(read_levels(pyboy)),
-        'health': sum(read_party_hp(pyboy))/sum(read_party_max_hp(pyboy)),
-        'money': read_money(pyboy),
-        'badges': read_number_of_badges(pyboy),
-        'party_size': read_party_size(pyboy)
-    }
-    return stats
+def read_enemy_hp(pyboy):
+    return pyboy.memory[WILD_POKEMON_HP]
 
 def update_explored(agent_explored, agent_current_stats):
-    if agent_current_stats['location'] not in agent_explored:
-        agent_explored.append(agent_current_stats['location'])
-        return agent_explored
+    if agent_current_stats['location'] in agent_explored and agent_current_stats['in_battle'] != 0:
+        agent_explored[agent_current_stats['location']] += 1
+    else:
+        agent_explored[agent_current_stats['location']] = 1
     return agent_explored
+
+def update_max_level(agent_max_level, agent_current_stats):
+    return max(agent_max_level, agent_current_stats['level'])
+
+def calculate_reward(agent_explored, agent_current_stats, agent_stats, step_count, agent_max_level):
+    reward_dict = {
+        'exploration': get_exploration_reward(agent_current_stats, agent_explored) * 0.1,
+        'level': get_levels_reward(agent_current_stats, agent_max_level),
+        'healing': get_healing_reward(agent_current_stats, agent_stats, step_count) * 10,
+        'battle': get_battle_reward(agent_current_stats, agent_stats, step_count) * 3,
+        'gym_battle': get_gym_battle_reward(agent_current_stats, agent_stats, step_count) * 10,
+        'blocked': get_stuck_reward(agent_explored, agent_current_stats) * -0.5
+    }
+    reward = 0
+    for i in reward_dict.values():
+        reward += i
+    return reward
+
+def get_exploration_reward(agent_current_stats, agent_explored):
+    if agent_current_stats['location'] not in agent_explored:
+        return 1
+    return 0
+
+def get_levels_reward(agent_current_stats, agent_max_level):
+    if agent_current_stats['level'] > agent_max_level:
+        return agent_current_stats['level'] - agent_max_level
+    return 0
+
+def get_healing_reward(agent_current_stats, agent_stats, step_count):
+    if agent_current_stats['hp'] > agent_stats[step_count]['hp'] and agent_stats[step_count]['hp'] != 0:
+        return agent_current_stats['hp'] - agent_stats[step_count]['hp']
+    return 0
+
+def get_battle_reward(agent_current_stats, agent_stats, step_count):
+    if agent_current_stats['in_battle'] < agent_stats[step_count]['in_battle'] and agent_current_stats['enemy_hp'] < agent_stats[step_count]['enemy_hp']:
+        return 1
+    return 0
+
+def get_gym_battle_reward(agent_current_stats, agent_stats, step_count):
+    if agent_current_stats['badges'] > agent_stats[step_count]['badges']:
+        return 1
+    return 0
+
+def get_stuck_reward(agent_explored, agent_current_stats):
+    if agent_current_stats['location'] in agent_explored and agent_explored[agent_current_stats['location']] > 200:
+        return 1
+    return 0

@@ -4,17 +4,14 @@
 
 from pyboy import PyBoy
 from random import randint
+import numpy as np
 
-pyboy = PyBoy('d:/Pokemon/pokemonRed.gb')
-pyboy.game_wrapper.start_game()
-pyboy.set_emulation_speed(0)
+smth = {
+    (1,2,3): 2,
 
-valid_keys = ['','a','b','up','down','left','right','start']
-while True:
-    pyboy.tick(10000)
-    action = valid_keys[randint(0,len(valid_keys)-1)]
-    if action == '':
-        pass
-    else:
-        pyboy.button(action)
-pyboy.stop()
+}
+rew = (1,2,3)
+if rew in smth:
+    print(smth[rew])
+else:
+    print(0)

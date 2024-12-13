@@ -14,8 +14,8 @@ class PokemonRedEnv(Env):
 
         # Observation space - sposób reprezentacji obserwacji dla agenta
         self.output_shape_full = (144,160,4)
-        self.output_shape_simplified = (18*20,)
-        self.observation_space = spaces.Box(low=0, high=np.iinfo(np.uint32).max, shape=self.output_shape_simplified, dtype=np.uint32)
+        self.output_shape_simplified = (18,20,1)
+        self.observation_space = spaces.Box(low=0, high=255, shape=self.output_shape_simplified, dtype=np.uint8)
 
         # Action frequency
         self.action_frequency = action_frequency
@@ -72,8 +72,13 @@ class PokemonRedEnv(Env):
     def render(self):
         # Generate observation
         # observation_full = self.pyboy.screen.ndarray
-        observation_simplified = self.pyboy.game_area().flatten()
-        return observation_simplified
+        observation_simplified = np.array(self.pyboy.game_area())
+        max_val = np.max(observation_simplified)
+        # Normalization
+        observation_simplified = (
+            observation_simplified / max_val * 255
+            ).astype(np.uint8)
+        return observation_simplified[np.newaxis,:,:]
 
     def close(self):
         self.pyboy.stop()

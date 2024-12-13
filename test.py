@@ -1,10 +1,11 @@
-from env_v2 import PokemonRedEnv
+from env_multi_input import PokemonRedEnv
 import numpy as np
 
 rom_path = 'd:/Pokemon/pokemonRed.gb'
 init_state_path = 'd:/Pokemon/has_pokedex_nballs.state'
 freq = 24
-env = PokemonRedEnv(freq, rom_path, init_state_path)
+env = PokemonRedEnv(rom_path, init_state_path, 'SDL2')
+env.reset()
 states = []
 rewards = []
 try:
@@ -19,7 +20,8 @@ try:
 
                 states.append(observation)
                 rewards.append(reward)
-                print(env.agent_stats[i])
+                if env.agent_current_stats['in_battle'] == 0:
+                    print("yes")
                 i += 1
 
 finally:
